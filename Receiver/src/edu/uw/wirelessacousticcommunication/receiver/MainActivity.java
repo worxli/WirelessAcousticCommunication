@@ -6,13 +6,15 @@ import android.os.Message;
 import android.app.Activity;
 import android.view.Menu;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
 	
 	//listener thread
-	Thread listenerThread;
+	private Thread listenerThread;
+	private boolean mListening = false;
 	
 	//handler for communication from listener thread back to UI thread
 	Handler handler = new Handler(){
@@ -40,11 +42,29 @@ public class MainActivity extends Activity {
 	//start listening to the surrounding -> start new thread
 	public void listen(View v){
 		
-		if(listenerThread==null){
-			listenerThread = new Thread(new ListenerThread(handler,this.getApplicationContext()));
-			listenerThread.start();
+		Button mButton = (Button) findViewById(R.id.listen);
+		
+		if(mListening){
+			
+			mButton.setText("Start listening");
+			mListening = false;
+			
+			listenerThread.interrupt();
+			
+			
+		} else {
+			
+			mButton.setText("Stop listening");
+			mListening = true;
+			
+			//check if thread exists
+			if(listenerThread==null){
+				listenerThread = new Thread(new ListenerThread(handler,this.getApplicationContext()));
+				listenerThread.start();
+			}
+			
+			Toast.makeText(getApplicationContext(), "started listening", Toast.LENGTH_SHORT).show();
 		}
-		Toast.makeText(getApplicationContext(), "started listening", Toast.LENGTH_SHORT).show();
 		
 	}
 	
