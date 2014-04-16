@@ -1,5 +1,8 @@
 package edu.uw.wirelessacousticcommunication.receiver;
 
+import java.nio.ByteBuffer;
+import java.util.BitSet;
+
 import edu.uw.wirelessacousticcommunication.receiver.ListenerService.LocalBinder;
 import android.content.ComponentName;
 import android.content.Context;
@@ -33,8 +36,50 @@ public class ListenerThread implements Runnable {
 		        Context.BIND_AUTO_CREATE
 		    );
 		
-		
+		WiAcHeader sampleHeader = getHeader(BitSet.valueOf(new byte[]{(byte)1}));
 
+	}
+	
+	public WiAcHeader getHeader(BitSet bitstring){
+		
+		//reconstruction
+		byte[] bytes = new byte[bitstring.length()/8+1];
+	    for (int i=0; i<bitstring.length(); i++) {
+	        if (bitstring.get(i)) {
+	            bytes[bytes.length-i/8-1] |= 1<<(i%8);
+	        }
+	    }
+	    
+	    //define variables
+	    byte[] src = new byte[4];
+	    byte[] dest = new byte[4];
+	    int length;
+	    long CRC;
+	    byte[] CRCbytes = new byte[8];
+	    
+	    //get src
+	    for (int i = 0; i < 4; i++) {
+	    	src[i] = bytes[i];
+		}
+	    
+	    //get dest
+	    for (int i = 0; i < 4; i++) {
+	    	dest[i] = bytes[i+4];
+		}
+	    
+	    length = bytes[8];
+	    
+	    for (int i = 0; i < 8; i++) {
+	    	CRCbytes[i] = bytes[i+17];
+		}
+
+	    ByteBuffer buf2 = ByteBuffer.wrap(CRCbytes);  
+	    CRC = buf2.getLong();
+	    
+	    WiAcHeader mHeader = new WiAcHeader(src, dest, length, CRC);
+		
+	    return mHeader;
+		
 	}
 	
 	/** Defines callbacks for service binding, passed to bindService() */
