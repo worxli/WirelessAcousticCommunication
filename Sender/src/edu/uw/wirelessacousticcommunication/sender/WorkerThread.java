@@ -9,6 +9,9 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import android.annotation.SuppressLint;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
@@ -90,6 +93,18 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		return bitstring;
 	}
+	
+	public void sendAudio(){
+		
+		AudioTrack audio = new AudioTrack(AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, 44100, AudioTrack.MODE_STREAM);
+
+		String data = "some samlpe data dsf asdf asd f asd f asd  sf as df a sd f asdf  a sdf";
+		byte[] audioData = data.getBytes();
+		audio.write(audioData, 0, audioData.length);
+		audio.play();
+		
+		Log.d("DEBUG", "audio played");
+	}
 
 	@Override
 	protected Void doInBackground(String... params) {
@@ -104,7 +119,9 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		//modulate
 		//modulate(bits, carrier signal, bitspersymbol)
-	
+		
+		sendAudio();
+		
 		return null;
 	}
 }
