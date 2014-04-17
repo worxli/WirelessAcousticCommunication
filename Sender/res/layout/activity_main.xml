@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_marginTop="20dp"
-        android:layout_centerHorizontal="true"
+        android:layout_marginLeft="5dp"
         android:ems="10"
         android:inputType="textMultiLine" >
 
@@ -25,8 +25,7 @@
         android:id="@+id/send"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/editText1"
-        android:layout_centerHorizontal="true"
+        android:layout_toRightOf="@id/message"
         android:layout_marginTop="20dp"
         android:text="Send message" 
         android:onClick="send"/>
