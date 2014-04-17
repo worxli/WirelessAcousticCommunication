@@ -36,7 +36,7 @@ public class ListenerThread implements Runnable {
 		        Context.BIND_AUTO_CREATE
 		    );
 		
-		WiAcHeader sampleHeader = getHeader(BitSet.valueOf(new byte[]{(byte)1}));
+		WiAcHeader sampleHeader = getHeader(BitSet.valueOf("adfasdfasdfasdfasdfasdfadsfadsfadf".getBytes()));
 
 	}
 	
