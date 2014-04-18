@@ -19,7 +19,7 @@
         android:inputType="textMultiLine" >
 
         <requestFocus />
-    </EditText>
+    </EditText>    
 
     <Button
         android:id="@+id/send"
