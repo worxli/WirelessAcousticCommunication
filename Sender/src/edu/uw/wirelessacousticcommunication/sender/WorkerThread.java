@@ -21,7 +21,7 @@ import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
-public class WorkerThread extends AsyncTask<String, Void, Void> {
+public class WorkerThread extends AsyncTask<String, Integer, Void> {
 	
 	private final String destIP = "1.1.1.1";
 	private final String srcIP = "23.12.4.123";
@@ -62,16 +62,12 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		}
 		
 		//Length of payload to byte array
-		byte[] length = new byte[]{(byte) data.length};
+		//4 bytes src, 4 bytes dest, 4 bytes length (of entire packet), #of bits in payload, 8 bytes CRC
+		int len = 8*8+4*8+data.length*8+8*8;
+		byte[] length = ByteBuffer.allocate(4).putInt(len).array(); 
 		
-		// checksum with the specified array of bytes
-		Checksum checksum = new CRC32();
-		checksum.update(data, 0, data.length);
-		byte[] check = new byte[8];
-		ByteBuffer buf = ByteBuffer.wrap(check);  
-		buf.putLong(checksum.getValue());  
-		
-		byte[] header = new byte[17];
+		//create 12 byte header
+		byte[] header = new byte[12];
 		
 		for (int i = 0; i < srcBytes.length; i++) {
 			header[i] = srcBytes[i];
@@ -82,11 +78,9 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		for (int k = 0; k < length.length; k++) {
 			header[k+8] = length[k];
 		}
-		for (int l = 0; l < check.length; l++) {
-			header[l+9] = check[l];
-		}
-		
-		byte[] payload = new byte[header.length+data.length];
+
+		//create payload: header + data + CRC
+		byte[] payload = new byte[header.length+data.length+8];
 		
 		for (int i = 0; i < header.length; i++) {
 			payload[i] = header[i];
@@ -94,6 +88,16 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		for (int i = 0; i < data.length; i++) {
 			payload[i+header.length] = data[i];
 		}
+		
+		// checksum with the specified array of bytes
+		Checksum checksum = new CRC32();
+		checksum.update(payload, 0, payload.length-8);
+		byte[] check = ByteBuffer.allocate(8).putLong(checksum.getValue()).array();
+		
+		for (int i = 0; i < check.length; i++) {
+			payload[i+payload.length-8] = check[i];
+		}
+		
 		
 		BitSet bitstring = new BitSet();
 		
@@ -105,25 +109,21 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		return bitstring;
 	}
-	
-	public void sendAudio(){
-		
-		AudioTrack audio = new AudioTrack(AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, 44100, AudioTrack.MODE_STREAM);
 
-		String data = "some samlpe data dsf asdf asd f asd f asd  sf as df a sd f asdf  a sdf";
-		byte[] audioData = data.getBytes();
-		audio.write(audioData, 0, audioData.length);
-		audio.play();
-		
-		Log.d("DEBUG", "audio played");
-	}
 
 	@Override
 	protected Void doInBackground(String... params) {
 		
 		//get message
 		String msg = params[0];
-		message= BitSet.valueOf(new long[]{Long.parseLong("1110010010110",2)});
+		
+		//get frequency
+		int freq = Integer.parseInt(params[1]);
+		
+		//get bits per symbol
+		int bps = Integer.parseInt(params[2]);
+		
+		//message= BitSet.valueOf(new long[]{Long.parseLong("1110010010110",2)});
 		if(!msg.equals(""))
 			freqOfTone=Double.parseDouble(msg);
 		else
@@ -140,7 +140,6 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		genTone();
 		playSound();
 		
-		//sendAudio();
 		
 		return null;
 	}
@@ -175,4 +174,5 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
         audioTrack.write(generatedSnd, 0, generatedSnd.length);
         audioTrack.play();
     }
+
 }
