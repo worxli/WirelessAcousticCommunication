@@ -1,40 +1,23 @@
 package edu.uw.wirelessacousticcommunication.sender;
 
-import java.io.ObjectOutputStream;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
-import java.util.Queue;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
-
-
 import android.annotation.SuppressLint;
-
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.AsyncTask;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
-import android.widget.Toast;
 
 public class WorkerThread extends AsyncTask<String, Void, Void> {
 	
-	private final String destIP = "1.1.1.1";
-	private final String srcIP = "23.12.4.123";
+	//we don't know destination so just broadcast
+	private final String destIP = "255.255.255.255";
 		
-	/*
-	 * convertData(String message) ** 
-	 * slice message into chunks ** 
-	 * convert to bit array ** 
-	 * for each chunk: e.g. stuff bits, 
-	 * create header and calculate CRC
-	 */
 	private BitSet message;// = new BitSet();
-	private final int duration = 5; // seconds
+	private final int duration = 1; // seconds
 	private final int bitRate = 300;
     private final int sampleRate = 44100;
     private final int numSamples = duration * sampleRate;
@@ -42,36 +25,47 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
     private double freqOfTone = 12001; // hz
     private final byte generatedSnd[] = new byte[2 * numSamples];
     
+    //temp header buffer
+    private byte[] headerBuf = new byte[12]; 
+    
+    
+    /*
+	 * convertData(String message) ** 
+	 * convert to byte array ** 
+	 * create header and calculate CRC
+	 * put all in a big byte array and then in a bitset
+	 * add preamble
+	 */
+	
+	@SuppressLint("NewApi")
 	private BitSet convertData(String msg) {
+		
+		//get IP, if not available -> 0.0.0.0
+		String srcIP = "1.1.1.1";//Utils.getIPAddress(true);
 		
 		//get bytes of message
 		byte[] data = msg.getBytes();
 		
 		//src string to byte array
 		String[] srcStr = srcIP.split("\\.");
-		byte[] srcBytes = new byte[4];
+		byte[] srcBytes = new byte[5];
 		for (int i = 0; i < srcStr.length; i++) {
 			srcBytes[i] = (byte)Integer.parseInt(srcStr[i]);
-		}
+		}		
 		
 		//dest string to byte array
 		String[] destStr = destIP.split("\\.");
-		byte[] destBytes = new byte[4];
+		byte[] destBytes = new byte[5];
 		for (int i = 0; i < srcStr.length; i++) {
-			destBytes[i] = (byte)Integer.parseInt(destStr[i]);
+			destBytes[i] = (byte)(int)Integer.parseInt(destStr[i]);
 		}
 		
 		//Length of payload to byte array
-		byte[] length = new byte[]{(byte) data.length};
+		int len = data.length;
+		byte[] length = ByteBuffer.allocate(4).putInt(len).array(); 
 		
-		// checksum with the specified array of bytes
-		Checksum checksum = new CRC32();
-		checksum.update(data, 0, data.length);
-		byte[] check = new byte[8];
-		ByteBuffer buf = ByteBuffer.wrap(check);  
-		buf.putLong(checksum.getValue());  
-		
-		byte[] header = new byte[17];
+		//create 12 byte header
+		byte[] header = new byte[12];
 		
 		for (int i = 0; i < srcBytes.length; i++) {
 			header[i] = srcBytes[i];
@@ -82,65 +76,90 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		for (int k = 0; k < length.length; k++) {
 			header[k+8] = length[k];
 		}
-		for (int l = 0; l < check.length; l++) {
-			header[l+9] = check[l];
-		}
 		
-		byte[] payload = new byte[header.length+data.length];
+		String heaString = byteToString(length);
+		System.out.println("len length: "+heaString.length()+" bytes:"+heaString.length()/8+" bits:"+heaString);
 		
+
+		//create payload: header + data + CRC
+		//actually we just add the preamble in front of it
+		//preamble 1111'1111 1111'1111 -> so in byte rep.: 255 255
+		int prelen = 2;
+		byte[] payload = new byte[prelen+header.length+data.length+8];
+		
+		payload[0] = (byte) 0xff;
+		payload[1] = (byte) 0xff;
+		
+		String preaString = byteToString(payload);
+		System.out.println("preamble length: "+preaString.length()+" bytes:"+preaString.length()/8+" bits:"+preaString);
+		
+
 		for (int i = 0; i < header.length; i++) {
-			payload[i] = header[i];
+			payload[i+prelen] = header[i];
 		}
 		for (int i = 0; i < data.length; i++) {
-			payload[i+header.length] = data[i];
+			payload[i+header.length+prelen] = data[i];
 		}
 		
-		BitSet bitstring = new BitSet();
+		String headString = byteToString(header);
+		System.out.println("header length: "+headString.length()+" bytes:"+headString.length()/8+" bits:"+headString);
 		
-		for (int i=0; i<payload.length*8; i++) {
-	        if ((payload[payload.length-i/8-1]&(1<<(i%8))) > 0) {
-	            bitstring.set(i);
-	        }
-	    }		
+		// checksum with the specified array of bytes
+		Checksum checksum = new CRC32();
+		checksum.update(payload, 0, payload.length-8);
+		byte[] check = ByteBuffer.allocate(8).putLong(checksum.getValue()).array();
+		
+		for (int i = 0; i < check.length; i++) {
+			payload[i+payload.length-8] = check[i];
+		}
+		
+		String checkString = byteToString(check);
+		System.out.println("check length: "+checkString.length()+" bytes:"+checkString.length()/8+" bits:"+checkString);
+		
+		//this is our "bitarray" of the packet
+		BitSet bitstring = BitSet.valueOf(payload);
 		
 		return bitstring;
 	}
-	
-	public void sendAudio(){
-		
-		AudioTrack audio = new AudioTrack(AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, 44100, AudioTrack.MODE_STREAM);
 
-		String data = "some samlpe data dsf asdf asd f asd f asd  sf as df a sd f asdf  a sdf";
-		byte[] audioData = data.getBytes();
-		audio.write(audioData, 0, audioData.length);
-		audio.play();
+	public String byteToString(byte[] b){
 		
-		Log.d("DEBUG", "audio played");
+		String s = "";
+		
+		for(int j=0; j<b.length; j++){
+			
+			s = s+String.format("%8s", Integer.toBinaryString(b[j] & 0xFF)).replace(' ', '0');
+		}
+		
+		return s;
 	}
 
+
+	@SuppressLint("NewApi")
 	@Override
 	protected Void doInBackground(String... params) {
 		
 		//get message
 		String msg = params[0];
-		message= BitSet.valueOf(new long[]{Long.parseLong("1110010010110",2)});
-		if(!msg.equals(""))
-			freqOfTone=Double.parseDouble(msg);
-		else
-			freqOfTone=11999;
 		
-		Log.d("Debug", "message: "+msg);
+		//get frequency
+		int freq = Integer.parseInt(params[1]);
+		
+		//debug
+		freqOfTone = freq;
+		
+		//get bits per symbol
+		int bps = Integer.parseInt(params[2]);
 			
 		//convert message to data packet
-		BitSet packets = convertData(msg);
+		BitSet packet = convertData(msg);
+		
 		
 		//modulate
 		//modulate(bits, carrier signal, bitspersymbol)
-		Log.v("WORKER","Working!!!!!!!!!!!!!!!!!");
+		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
 		genTone();
-		playSound();
-		
-		//sendAudio();
+		//playSound();
 		
 		return null;
 	}
@@ -215,4 +234,5 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
         audioTrack.write(generatedSnd, 0, generatedSnd.length);
         audioTrack.play();
     }
+
 }

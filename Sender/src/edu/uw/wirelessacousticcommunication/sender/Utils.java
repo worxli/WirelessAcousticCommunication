@@ -34,7 +34,7 @@ public class Utils {
                 }
             }
         } catch (Exception ex) { } // for now eat exceptions
-        return "";
+        return "0.0.0.0";
     }
 
 }

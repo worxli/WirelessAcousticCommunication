@@ -19,7 +19,7 @@
         android:inputType="textMultiLine" >
 
         <requestFocus />
-    </EditText>
+    </EditText>    
 
     <Button
         android:id="@+id/send"
@@ -29,6 +29,32 @@
         android:layout_marginTop="20dp"
         android:text="Send message" 
         android:onClick="send"/>
-
+    
+    <SeekBar android:id="@+id/freqSlider"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:minHeight="10dp"
+         android:layout_marginTop="250dp"/>
+	
+    <TextView android:id="@+id/freqText"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_below="@id/freqSlider"
+          android:text="1 kHz"
+          android:layout_gravity="center" />
+    
+    <SeekBar android:id="@+id/symbolSlider"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:layout_below="@id/freqText"
+         android:minHeight="10dp"
+         android:layout_marginTop="20dp"/>
+	
+    <TextView android:id="@+id/symbolText"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_below="@id/symbolSlider"
+          android:text="1 bps"
+          android:layout_gravity="center" />
 
 </RelativeLayout>
