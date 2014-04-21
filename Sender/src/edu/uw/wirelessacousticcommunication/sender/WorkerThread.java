@@ -17,13 +17,14 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	private final String destIP = "255.255.255.255";
 		
 	private BitSet message;// = new BitSet();
-	private final int duration = 1; // seconds
-	private final int bitRate = 300;
-    private final int sampleRate = 44100;
-    private final int numSamples = duration * sampleRate;
-    private final double sample[] = new double[numSamples];
+	private int duration = 1; // seconds
+	private int bitRate = 300;
+    private int sampleRate = 44100;
+    private int numSamples;
+    private double sample[];
     private double freqOfTone = 12001; // hz
-    private final byte generatedSnd[] = new byte[2 * numSamples];
+    private int bitsPerSymbol;
+    private byte generatedSnd[];
     
     //temp header buffer
     private byte[] headerBuf = new byte[12]; 
@@ -150,22 +151,34 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		//get bits per symbol
 		int bps = Integer.parseInt(params[2]);
-			
+		bitsPerSymbol=bps;
 		//convert message to data packet
 		BitSet packet = convertData(msg);
-		
+		message=packet;
 		
 		//modulate
 		//modulate(bits, carrier signal, bitspersymbol)
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
-		genTone();
+		//genTone();
+		sendData();
 		//playSound();
 		
 		return null;
 	}
 	
+	public void sendData(){
+		genCarrierSamples();
+		Modulate(message);
+		genWave();
+		playSound();
+	}
+	
 	public void genCarrierSamples(){
         // fill out the array
+		duration=(int)Math.ceil(this.message.size()/(this.bitsPerSymbol*this.freqOfTone));
+		numSamples=duration * sampleRate;
+		sample = new double[numSamples];
+		generatedSnd = new byte[2 * numSamples];
         for (int i = 0; i < numSamples; ++i) {
             sample[i] = Math.sin(2 * Math.PI * i * (freqOfTone/sampleRate));
         }
@@ -184,7 +197,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
         }
 	}
 	
-	public void Modulate(BitSet bits, byte[] carrierWave, int bitsPerSymbol){
+	public void Modulate(BitSet bits){
 		int samplesPerSymbol=(int) Math.ceil(sampleRate/freqOfTone);
 		Integer[] amp=calcAmp(bits,samplesPerSymbol,bitsPerSymbol);
 		for (int i = 0; i < numSamples; ++i) {
@@ -202,6 +215,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		}
 		return amp;
 	}
+	
 	
 	public void genTone(){
         // fill out the array
