@@ -145,12 +145,52 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		return null;
 	}
 	
+	public void genCarrierSamples(){
+        // fill out the array
+        for (int i = 0; i < numSamples; ++i) {
+            sample[i] = Math.sin(2 * Math.PI * i * (freqOfTone/sampleRate));
+        }
+    }
+	
+	public void genWave(){
+		// convert to 16 bit pcm sound array
+        // assumes the sample buffer is normalised.
+		int idx = 0;
+        for (final double dVal : sample) {
+            // scale to maximum amplitude
+            final short val = (short) ((dVal * 32767));
+            // in 16 bit wav PCM, first byte is the low order byte
+            generatedSnd[idx++] = (byte) (val & 0x00ff);
+            generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
+        }
+	}
+	
+	public void Modulate(BitSet bits, byte[] carrierWave, int bitsPerSymbol){
+		int samplesPerSymbol=(int) Math.ceil(sampleRate/freqOfTone);
+		Integer[] amp=calcAmp(bits,samplesPerSymbol,bitsPerSymbol);
+		for (int i = 0; i < numSamples; ++i) {
+            sample[i] = sample[i]*amp[i];
+        }
+	}
+	public Integer[] calcAmp(BitSet bits, int sps, int bps){
+		Integer[] amp=new Integer[bits.size()];
+		for(int i=0;i<bits.size();i=i+bps){
+			String bitStr="";
+			for(int j=0;j<bps;j++){
+				bitStr=bitStr+bits.get(i+j);
+			}
+			amp[i]=Integer.parseInt(bitStr, 2);
+		}
+		return amp;
+	}
+	
 	public void genTone(){
         // fill out the array
         for (int i = 0; i < numSamples; ++i) {
             sample[i] = Math.sin(2 * Math.PI * i * (freqOfTone/sampleRate));
         }
         double msgSample[] = new double[numSamples];
+        
         for (int i=0; i < numSamples; ++i){
         	msgSample[i] = sampleRate/bitRate;
         }
