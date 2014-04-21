@@ -1,41 +1,48 @@
 package edu.uw.wirelessacousticcommunication.receiver;
 
+import java.nio.ByteBuffer;
+
 public class WiAcHeader {
 	
-	private byte[] dest;
-	private byte[] src;
-	private long CRC;
+	private byte[] dest = new byte[4];
+	private byte[] src = new byte[4];
 	private int length;
 	
-	public WiAcHeader(byte[] dest, byte[] src, int length, long CRC){
-		
-		this.dest = dest;
-		this.src = src;
-		this.CRC = CRC;
-		this.length = length;
+	public WiAcHeader(byte[] header){
+	    
+	    //get src
+	    for (int i = 0; i < 4; i++) {
+	    	this.src[i] = header[i];
+		}
+	    
+	    //get dest
+	    for (int i = 0; i < 4; i++) {
+	    	this.dest[i] = header[i+4];
+		}	    
+	    
+	    byte[] len = new byte[4];
+	    System.arraycopy(header, 8, len, 0, 4);
+	    ByteBuffer wrapped = ByteBuffer.wrap(len);
+	    this.length = wrapped.getInt();
 		
 	}
 	
 	public String getSrc(){
 		
-		String IP = Byte.toString(this.src[0])+"."+Byte.toString(this.src[1])+"."+Byte.toString(this.src[2])+"."+Byte.toString(this.src[3]);
+		String IP = (this.src[0]&0xff)+"."+(this.src[1]&0xff)+"."+(this.src[2]&0xff)+"."+(this.src[3]&0xff);
 		
 		return IP;
 	}
 	
 	public String getDest(){
 		
-		String IP = Byte.toString(this.dest[0])+"."+Byte.toString(this.dest[1])+"."+Byte.toString(this.dest[2])+"."+Byte.toString(this.dest[3]);
+		String IP = (this.dest[0]&0xff)+"."+(this.dest[1]&0xff)+"."+(this.dest[2]&0xff)+"."+(this.dest[3]&0xff);
 		
 		return IP;
 	}
 	
 	public int getLength(){
 		return this.length;
-	}
-	
-	public long getCRC(){
-		return this.CRC;
 	}
 
 }

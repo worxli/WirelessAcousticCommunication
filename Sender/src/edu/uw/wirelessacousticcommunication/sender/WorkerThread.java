@@ -1,25 +1,15 @@
 package edu.uw.wirelessacousticcommunication.sender;
 
-import java.io.ObjectOutputStream;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
-import java.util.Queue;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
-
-
 import android.annotation.SuppressLint;
-
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.AsyncTask;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
-import android.widget.Toast;
 
 public class WorkerThread extends AsyncTask<String, Void, Void> {
 	
@@ -35,6 +25,9 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
     private double freqOfTone = 12001; // hz
     private final byte generatedSnd[] = new byte[2 * numSamples];
     
+    //temp header buffer
+    private byte[] headerBuf = new byte[12]; 
+    
     
     /*
 	 * convertData(String message) ** 
@@ -43,11 +36,12 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	 * put all in a big byte array and then in a bitset
 	 * add preamble
 	 */
+	
 	@SuppressLint("NewApi")
 	private BitSet convertData(String msg) {
 		
 		//get IP, if not available -> 0.0.0.0
-		String srcIP = Utils.getIPAddress(true);
+		String srcIP = "1.1.1.1";//Utils.getIPAddress(true);
 		
 		//get bytes of message
 		byte[] data = msg.getBytes();
@@ -63,12 +57,11 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		String[] destStr = destIP.split("\\.");
 		byte[] destBytes = new byte[5];
 		for (int i = 0; i < srcStr.length; i++) {
-			destBytes[i] = (byte)Integer.parseInt(destStr[i]);
+			destBytes[i] = (byte)(int)Integer.parseInt(destStr[i]);
 		}
 		
 		//Length of payload to byte array
-		//4 bytes src, 4 bytes dest, 4 bytes length (of entire packet), #of bits in payload, 8 bytes CRC
-		int len = 8*8+4*8+data.length*8+8*8;
+		int len = data.length;
 		byte[] length = ByteBuffer.allocate(4).putInt(len).array(); 
 		
 		//create 12 byte header
@@ -83,6 +76,10 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		for (int k = 0; k < length.length; k++) {
 			header[k+8] = length[k];
 		}
+		
+		String heaString = byteToString(length);
+		System.out.println("len length: "+heaString.length()+" bytes:"+heaString.length()/8+" bits:"+heaString);
+		
 
 		//create payload: header + data + CRC
 		//actually we just add the preamble in front of it
@@ -93,6 +90,10 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		payload[0] = (byte) 0xff;
 		payload[1] = (byte) 0xff;
 		
+		String preaString = byteToString(payload);
+		System.out.println("preamble length: "+preaString.length()+" bytes:"+preaString.length()/8+" bits:"+preaString);
+		
+
 		for (int i = 0; i < header.length; i++) {
 			payload[i+prelen] = header[i];
 		}
@@ -100,15 +101,8 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 			payload[i+header.length+prelen] = data[i];
 		}
 		
-
-		//Log.d("header bytes", header.toString());
-		//Log.d("header ", Long.toString(BitSet.valueOf(header).toLongArray()[0], 2));
-		//Log.d("header ", Long.toString(BitSet.valueOf(header).toLongArray()[1], 2));
-		//Log.d("header ", Long.toString(BitSet.valueOf(header).toLongArray()[2], 2));
-		
-		
-		Log.d("preamble and header: ", Long.toString(BitSet.valueOf(payload).toLongArray()[0], 2));
-		
+		String headString = byteToString(header);
+		System.out.println("header length: "+headString.length()+" bytes:"+headString.length()/8+" bits:"+headString);
 		
 		// checksum with the specified array of bytes
 		Checksum checksum = new CRC32();
@@ -119,11 +113,25 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 			payload[i+payload.length-8] = check[i];
 		}
 		
+		String checkString = byteToString(check);
+		System.out.println("check length: "+checkString.length()+" bytes:"+checkString.length()/8+" bits:"+checkString);
+		
 		//this is our "bitarray" of the packet
 		BitSet bitstring = BitSet.valueOf(payload);
-			
 		
 		return bitstring;
+	}
+
+	public String byteToString(byte[] b){
+		
+		String s = "";
+		
+		for(int j=0; j<b.length; j++){
+			
+			s = s+String.format("%8s", Integer.toBinaryString(b[j] & 0xFF)).replace(' ', '0');
+		}
+		
+		return s;
 	}
 
 
@@ -146,15 +154,12 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		//convert message to data packet
 		BitSet packet = convertData(msg);
 		
-		Log.d("packet: ", packet.toLongArray().length+"");
-		Log.d("packet: ", Long.toString(packet.toLongArray()[0], 2));
 		
 		//modulate
 		//modulate(bits, carrier signal, bitspersymbol)
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
 		genTone();
-		playSound();
-		
+		//playSound();
 		
 		return null;
 	}
