@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
 		int frequency = (sb.getProgress()+1)*1000;
 		
 		SeekBar sb2 = (SeekBar)findViewById(R.id.symbolSlider);
-		int bitspersymbol = (int)Math.pow(2,(sb.getProgress()+1));
+		int bitspersymbol = (int)Math.pow(2,(sb2.getProgress()+1));
 		
 		//send msg to worker thread via handler
 		new WorkerThread().execute(msg, frequency+"", ""+bitspersymbol);

@@ -141,16 +141,18 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	protected Void doInBackground(String... params) {
 		
 		//get message
-		String msg = params[0];
-		
+		String msg = "My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message.";//params[0];
+		//msg=msg+"ahs khasj khas"+msg+" jkj kj kjgf guk"+msg+msg+msg+msg+msg;
+		//msg=msg+msg+msg+msg+msg;
 		//get frequency
 		int freq = Integer.parseInt(params[1]);
 		
 		//debug
-		freqOfTone = freq;
+		freqOfTone = 12000;//freq;
 		
 		//get bits per symbol
-		int bps = Integer.parseInt(params[2]);
+		int bps = 2;//Integer.parseInt(params[2]);
+		Log.v("WORKER",params[2]+"=param - bps="+bps);
 		bitsPerSymbol=bps;
 		//convert message to data packet
 		BitSet packet = convertData(msg);
@@ -167,16 +169,20 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	}
 	
 	public void sendData(){
+		Log.v("WORKER","STEP 1");
 		genCarrierSamples();
+		Log.v("WORKER","STEP 2");
 		Modulate(message);
+		Log.v("WORKER","STEP 3");
 		genWave();
+		Log.v("WORKER","STEP 4");
 		playSound();
 	}
 	
 	public void genCarrierSamples(){
         // fill out the array
-		duration=(int)Math.ceil(this.message.size()/(this.bitsPerSymbol*this.freqOfTone));
-		numSamples=duration * sampleRate;
+		duration=(int)(Math.ceil(this.message.size()/this.bitsPerSymbol)/this.freqOfTone);
+		numSamples=(int)(Math.ceil(this.message.size()/this.bitsPerSymbol) * Math.ceil(sampleRate/this.freqOfTone));
 		sample = new double[numSamples];
 		generatedSnd = new byte[2 * numSamples];
         for (int i = 0; i < numSamples; ++i) {
@@ -199,20 +205,35 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	
 	public void Modulate(BitSet bits){
 		int samplesPerSymbol=(int) Math.ceil(sampleRate/freqOfTone);
+		Log.v("WORKER","Start of Amp Cal Mod");
 		Integer[] amp=calcAmp(bits,samplesPerSymbol,bitsPerSymbol);
-		for (int i = 0; i < numSamples; ++i) {
+		Log.v("WORKER","Start of Multi Mod");
+		for (int i = 0; i < numSamples; i++) {
             sample[i] = sample[i]*amp[i];
         }
+		Log.v("WORKER","END of Mod");
 	}
 	public Integer[] calcAmp(BitSet bits, int sps, int bps){
-		Integer[] amp=new Integer[bits.size()];
+		Integer[] amp=new Integer[numSamples];
+		int A=0;
+		int counter=0;
+		int tc=0;
+		//Log.v("WORKER","bits.size="+bits.size());
 		for(int i=0;i<bits.size();i=i+bps){
 			String bitStr="";
 			for(int j=0;j<bps;j++){
-				bitStr=bitStr+bits.get(i+j);
+				bitStr=bitStr+""+(bits.get(i+j)?1:0);
 			}
-			amp[i]=Integer.parseInt(bitStr, 2);
+			A=Integer.parseInt(bitStr, 2);
+			//Log.v("WORKER",A+"=A - bitStr"+bitStr);
+			//Log.v("WORKER",counter+"=counter - sps="+sps);
+			for(int j=0;j<sps;j++)
+				amp[j+counter]=A;
+			counter=counter+sps;
+			tc++;
 		}
+		//Log.v("WORKER","amp.size()="+counter);
+		//Log.v("WORKER","tc="+tc);
 		return amp;
 	}
 	
