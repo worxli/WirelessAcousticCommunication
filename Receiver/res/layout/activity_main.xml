@@ -14,8 +14,17 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_marginTop="20dp"
-        android:layout_centerHorizontal="true"
         android:text="Listen for signal"
+        android:onClick="listen" />
+    
+    <Button
+        android:id="@+id/measure"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="20dp"
+        android:layout_toRightOf="@id/listen"
+        android:text="Measure bit error rate"
         android:onClick="listen" />
 
     <TextView
@@ -26,5 +35,15 @@
         android:layout_below="@+id/button1"
         android:layout_marginTop="71dp"
         android:text="" />
+    
+    <TextView
+        android:id="@+id/errors"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/button1"
+        android:layout_below="@+id/button1"
+        android:layout_marginTop="100dp"
+        android:text="" />
+
 
 </RelativeLayout>
