@@ -1,29 +1,35 @@
 package edu.uw.wirelessacousticcommunication.receiver;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.res.AssetManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
+import android.os.Message;
 import android.util.Log;
 
 public class ListenerThread implements Runnable {
 	
 	private Handler handler;
+	private boolean measure;
 	private Context context;
-	private Intent serviceIntent;
-	private boolean mBound = false;
 
-	public ListenerThread(Handler handler, Context context) {
+	public ListenerThread(Handler handler, Context context, boolean measure) {
 		
 		this.handler = handler;
+		this.measure = measure;
 		this.context = context;
 
 	}
@@ -46,13 +52,82 @@ public class ListenerThread implements Runnable {
 		//read recorded bytes
 		//recorder.read(buffer, BufferElements2Rec);
 		
-		Log.d("Debug recorded: ", buffer+"");		
+		Message msg = null;	
+		Bundle bundle = new Bundle();
 		
+		int error = bitErrors("");
+		
+		if(!this.measure){
+			//get message and post in view
+			String ms = new String(findPreamble(buffer));
+			
+			msg = handler.obtainMessage();
+			bundle.putString("msg", ms);
+	        msg.setData(bundle);
+	        msg.what = 0;
+		} else {
+			//get bits and compare to sent bits
+			String bits = "asdf";//byteToString(findPreamble(buffer));
+			
+			int errors = bitErrors(bits);
+			msg = handler.obtainMessage();
+			bundle.putInt("errors", errors);
+	        msg.setData(bundle);
+	        msg.what = 1;
+		}
+		
+        handler.sendMessage(msg);
 
 	}
-	
-	//find the preamble in the data
-		public static void findPreamble(ByteBuffer buf){
+		
+	//compare received bits and 1Kb file
+	private int bitErrors(String bits) {
+		
+			BufferedReader reader = null;
+			StringBuilder contents = new StringBuilder();
+			
+			Log.d("reading", "start");
+			try {
+			    reader = new BufferedReader(
+			        new InputStreamReader(context.getResources().openRawResource(R.raw.data))); 
+			    
+			    // do reading, usually loop until end of file reading 
+			    String line = null; 
+			    while (( line = reader.readLine()) != null){
+			    	contents.append(line);
+			    }
+			} catch (IOException e) {
+			    Log.e("exc", e.getMessage());
+			} finally {
+			    if (reader != null) {
+			        try {
+						reader.close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			    }
+			}
+
+			String actualbits = byteToString(contents.toString().getBytes()); 
+			
+			if(actualbits.length()!=bits.length()){
+				return -1;
+			} else {
+				int err = 0;
+				
+				for (int i = 0; i < actualbits.length(); i++) {
+					if(actualbits.charAt(i)!=bits.charAt(i)){
+						err++;
+					}
+				}
+				return err;
+			}
+		}
+
+		//find the preamble in the data
+		@SuppressLint("NewApi")
+		public byte[] findPreamble(ByteBuffer buf){
 			
 			String search = "";
 			
@@ -88,7 +163,6 @@ public class ListenerThread implements Runnable {
 				//get position of first occurence of preamble
 				pos = search.indexOf(preamb);
 				
-				System.out.println(pos);
 				
 				//if not found -> go ahead, otherwise break
 				if(pos!=-1){
@@ -114,8 +188,7 @@ public class ListenerThread implements Runnable {
 			}
 			
 			//get header bytes
-			int maxPackSize = 20;
-			byte[] buffer = new byte[maxPackSize];
+			byte[] buffer = new byte[12];
 			
 			int ind = 0;
 			while(true){
@@ -125,71 +198,101 @@ public class ListenerThread implements Runnable {
 					ind++;
 				}
 				
-				if(ind==maxPackSize){
+				if(ind==11){
 					break;
 				}
 			}
-
-			//copy first 12 bytes into headerBytes
-			byte[] headerBytes = new byte[12];
+			
+			byte[] header = new byte[13];
+			int k;
+			if(pos<8){
+				header[0] = searchBytes[2];
+				header[1] = searchBytes[3];
+				k=2;
+			} else if(pos<16) {
+				header[0] = searchBytes[3];
+				k=1;
+			} else {
+				k=0;
+			}
+			
+			for (int i = 0; i < buffer.length-k; i++) {
+				header[i+k] = buffer[i];
+			}
+			
+			BitSet headerBits = BitSet.valueOf(header);
+			BitSet headerBitsShift = new BitSet(96);
 			
 			int shift = pos%8;
-			int high=0;
-			if(pos==0){
-				headerBytes[0] = searchBytes[2];
-				headerBytes[1] = searchBytes[3];
-				
-				for (int i = 0; i < 10; i++) {
-					headerBytes[i+2] = (byte) (buffer[i]);
-					high = i+1;
+			for (int i = shift; i < 96+shift; i++) {
+				if(headerBits.get(i)){
+					headerBitsShift.set(i-shift);
 				}
-			} else if(pos==7){
-				headerBytes[0] = searchBytes[3];
-				headerBytes[1] = buffer[0];
-				
-				for (int i = 0; i < 10; i++) {
-					headerBytes[i+2] = (byte) (buffer[i+1]);
-				}
-			} else if(pos==15){
-				headerBytes[0] = buffer[0];
-				headerBytes[1] = buffer[1];
-				
-				for (int i = 0; i < 10; i++) {
-					headerBytes[i+2] = (byte) (buffer[i+2]);
-				}
-			} else if(pos<7){
-				headerBytes[0] = (byte) ((byte) (searchBytes[2] << shift) | (searchBytes[3] >>> 8-shift));
-				headerBytes[1] = (byte) ((byte) (searchBytes[3] << shift) | (buffer[0] >>> 8-shift));
-				
-				for (int i = 0; i < 10; i++) {
-					//System.out.println("headerBytes: "+byteToString(headerBytes));
-					//System.out.println("buffer: "+byteToString(buffer));
-					//System.out.println("buffer: "+byteToString(new byte[]{(byte) (0b11110000 >>> 8-shift)}));
-					//System.out.println("buffer shifted: "+byteToString(new byte[]{(byte) ((int)buffer[i+1] >>> (8-shift))}));
-					//System.out.println("buffer +1: "+byteToString(new byte[]{buffer[i+1]}));
-					//System.out.println((int)buffer[i+1]);
-					//System.out.println((byte)buffer[i+1]>>>8);
-					headerBytes[i+2] = (byte) ((byte) (buffer[i] << shift) | (byte)((int)buffer[i+1] >>> 8-shift));
-				}
-			} else {
-				headerBytes[0] = (byte) ((byte) (searchBytes[2] << shift) | (buffer[0] >>> 8-shift));
-				headerBytes[1] = (byte) ((byte) (buffer[0] << shift) | (buffer[1] >>> 8-shift));
-				
-				for (int i = 0; i < 10; i++) {
-					headerBytes[i+2] = (byte) ((byte) (buffer[i+1] << shift) | (buffer[i+2] >>> 8-shift));
-				}
+			}
+			
+			byte[] headerBytes = new byte[12];
+			byte[] headerBytesShifted = headerBitsShift.toByteArray();
+			
+			for (int i = 0; i < headerBytesShifted.length; i++) {
+				headerBytes[i] = headerBytesShifted[i];
 			}
 			
 			//reconstruct header		
 			WiAcHeader mHeader = new WiAcHeader(headerBytes);
 			
 			//create array for data bytes
-			byte[] data = new byte[mHeader.getLength()];
-			for (int i = 0; i < mHeader.getLength(); i++) {
-				data[i] = (byte) ((byte) (buffer[i+high] << shift) | (buffer[i+high+1] >>> 8-shift));
+			if(mHeader.getLength()>0){
+				byte[] data = new byte[mHeader.getLength()+1];
+				
+				byte[] dataBuffer = new byte[mHeader.getLength()];
+				
+				ind = 0;
+				while(true){
+					
+					if(buf.remaining()>=1){
+						buf.get(dataBuffer, ind, 1);
+						ind++;
+					}
+					
+					if(ind==mHeader.getLength()-1){
+						break;
+					}
+				}
+				
+				if (k==2) {
+					data[0] = buffer[10];
+					k=1;
+				} else if (k==1){
+					data[0] = buffer[11];
+				}
+				
+				for (int i = 0; i < dataBuffer.length-k; i++) {
+					data[i+k] = dataBuffer[i];
+				}
+				
+				BitSet dataBits = BitSet.valueOf(data);
+				BitSet dataBitsShift = new BitSet();
+				
+				for (int i = shift; i < dataBits.length(); i++) {
+					if(dataBits.get(i)){
+						dataBitsShift.set(i-shift);
+					}
+				}
+				
+				byte[] dataBytes = new byte[mHeader.getLength()];
+				byte[] dataBytesShifted = dataBitsShift.toByteArray();
+				
+				for (int i = 0; i < dataBytesShifted.length; i++) {
+					dataBytes[i] = dataBytesShifted[i];
+				}
+				return dataBytes;
 			}
 			
+			return null;
+			
 		}
+		
+		
 	
 		//convert byte array to bit string
 		public static String byteToString(byte[] b){
