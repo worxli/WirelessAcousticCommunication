@@ -141,17 +141,15 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	protected Void doInBackground(String... params) {
 		
 		//get message
-		String msg = "My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message.";//params[0];
-		//msg=msg+"ahs khasj khas"+msg+" jkj kj kjgf guk"+msg+msg+msg+msg+msg;
-		//msg=msg+msg+msg+msg+msg;
-		//get frequency
+		//String msg = "My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message. My name is Fahad Pervaiz. This is a test message.";//params[0];
+		String msg = params[0];
 		int freq = Integer.parseInt(params[1]);
 		
 		//debug
-		freqOfTone = 12000;//freq;
+		freqOfTone = freq;
 		
 		//get bits per symbol
-		int bps = 2;//Integer.parseInt(params[2]);
+		int bps = Integer.parseInt(params[2]);
 		Log.v("WORKER",params[2]+"=param - bps="+bps);
 		bitsPerSymbol=bps;
 		//convert message to data packet

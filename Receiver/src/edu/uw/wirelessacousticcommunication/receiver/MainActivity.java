@@ -16,6 +16,7 @@ public class MainActivity extends Activity {
 	private Thread listenerThread;
 	private boolean mListening = false;
 	
+	
 	//handler for communication from listener thread back to UI thread
 	Handler handler = new Handler(){
 	    @Override

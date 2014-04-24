@@ -20,17 +20,32 @@ public class ListenerThread implements Runnable {
 	private Context context;
 	private Intent serviceIntent;
 	private boolean mBound = false;
+	
+	public AudioRecord audioRecord; 
+    public int mSamplesRead; //how many samples read 
+    public int recordingState;
+    public int bufferSizeBytes; 
+    public int channelConfiguration = AudioFormat.CHANNEL_IN_MONO; 
+    public int audioEncoding = AudioFormat.ENCODING_PCM_16BIT; 
+    public static short[] buffer; //+-32767 
+    public static final int sampleRate = 44100; //samp per sec 8000, 11025, 22050 44100 or 48000
+
 
 	public ListenerThread(Handler handler, Context context) {
 		
 		this.handler = handler;
 		this.context = context;
-
+		bufferSizeBytes = 4096;//AudioRecord.getMinBufferSize(sampleRate,channelConfiguration,audioEncoding); //4096 on ion
+		bufferSizeBytes = AudioRecord.getMinBufferSize(44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT); //4096 on ion
+        buffer = new short[bufferSizeBytes]; 
+        //audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,sampleRate,channelConfiguration,audioEncoding,bufferSizeBytes); //constructor
+        audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT,bufferSizeBytes); //constructor
+        Log.v("WORKER","INIT");
 	}
 
 	@Override
 	public void run() {
-		
+		/*
 		//buffer size
 		int BufferElements2Rec = 1024;
 
@@ -46,8 +61,31 @@ public class ListenerThread implements Runnable {
 		//read recorded bytes
 		//recorder.read(buffer, BufferElements2Rec);
 		
-		Log.d("Debug recorded: ", buffer+"");		
-		
+		Log.d("Debug recorded: ", buffer+"");	
+		*/
+		if(audioRecord.getState()==audioRecord.STATE_INITIALIZED){
+			audioRecord.startRecording();
+			while(!Thread.interrupted()) {
+				try{
+					byte[] byteBuffer = new byte[bufferSizeBytes]; 
+					mSamplesRead = audioRecord.read(byteBuffer, 0, bufferSizeBytes);
+					int amp;
+					for(int i = 0; i < bufferSizeBytes - 1; i++){
+						amp = (int)byteBuffer[i];
+						
+						//handler.handleMessage(handler.obtainMessage(amp));
+						//publishProgress( amp );
+						Log.v("WORKER","amp="+amp);
+					}
+				} catch( Exception e ){
+					e.printStackTrace();
+				}
+	        }
+			audioRecord.stop();
+		}
+		else{
+			Log.e("WORKER", "Audio Recorder not init");
+		}
 
 	}
 	
