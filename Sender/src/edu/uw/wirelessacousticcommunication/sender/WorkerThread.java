@@ -92,8 +92,8 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		payload[0] = (byte) 0xff;
 		payload[1] = (byte) 0xff;
 		
-		String preaString = byteToString(payload);
-		System.out.println("preamble length: "+preaString.length()+" bytes:"+preaString.length()/8+" bits:"+preaString);
+		//String preaString = byteToString(payload);
+		//System.out.println("preamble length: "+preaString.length()+" bytes:"+preaString.length()/8+" bits:"+preaString);
 		
 
 		for (int i = 0; i < header.length; i++) {
@@ -117,6 +117,9 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		String checkString = byteToString(check);
 		System.out.println("check length: "+checkString.length()+" bytes:"+checkString.length()/8+" bits:"+checkString);
+		
+		checkString = byteToString(payload);
+		System.out.println("payload length: "+checkString.length()+" bytes:"+checkString.length()/8+" bits:"+checkString);
 		
 		//this is our "bitarray" of the packet
 		return payload;
