@@ -1,7 +1,12 @@
 package edu.uw.wirelessacousticcommunication.sender;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.EditText;
@@ -9,7 +14,6 @@ import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
-import edu.uw.wirelessacousticcommunication.sender.WorkerThread;
 
 public class MainActivity extends Activity {
 
@@ -85,6 +89,43 @@ public class MainActivity extends Activity {
 		
 		Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
 		
+	}
+	
+	public void sendFile(View v){
+		BufferedReader reader = null;
+		StringBuilder contents = new StringBuilder();
+		
+		SeekBar sb = (SeekBar)findViewById(R.id.freqSlider);
+		int frequency = (sb.getProgress()+1)*1000;
+		
+		SeekBar sb2 = (SeekBar)findViewById(R.id.symbolSlider);
+		int bitspersymbol = (int)Math.pow(2,(sb2.getProgress()+1));
+		
+		Log.d("reading", "start");
+		try {
+		    reader = new BufferedReader(
+		        new InputStreamReader(getApplicationContext().getResources().openRawResource(R.raw.data))); 
+		    
+		    // do reading, usually loop until end of file reading 
+		    String line = null; 
+		    while (( line = reader.readLine()) != null){
+		    	contents.append(line);
+		    }
+		} catch (IOException e) {
+		    Log.e("exc", e.getMessage());
+		} finally {
+		    if (reader != null) {
+		        try {
+					reader.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		    }
+		}
+		
+		//send msg to worker thread via handler
+		new WorkerThread().execute(contents.toString(), frequency+"", ""+bitspersymbol);
 	}
 
 }

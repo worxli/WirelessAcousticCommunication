@@ -26,8 +26,10 @@ public class MainActivity extends Activity {
 	    public void handleMessage(Message msg){
 	        if(msg.what == 0){
 	            setText(msg.getData().getString("msg"));
+	        } else if(msg.what==1) {
+	        	setErrorRate(Integer.parseInt(msg.getData().getString("msg")));
 	        } else {
-	        	setErrorRate(msg.getData().getInt("errors"));
+	        	setLog(msg.getData().getString("msg"));
 	        }
 	    }
 	};
@@ -109,6 +111,10 @@ public class MainActivity extends Activity {
 	public void setText(String msg){
 		TextView tv = (TextView) findViewById(R.id.message);
 		tv.setText(msg);
+	}
+	
+	public void setLog(String msg){
+		Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
 	}
 	
 	//display message on screen
