@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
+
 import android.annotation.SuppressLint;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -39,7 +40,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	 */
 	
 	@SuppressLint("NewApi")
-	private BitSet convertData(String msg) {
+	private byte[] convertData(String msg) {
 		
 		//get IP, if not available -> 0.0.0.0
 		String srcIP = "1.1.1.1";//Utils.getIPAddress(true);
@@ -118,9 +119,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		System.out.println("check length: "+checkString.length()+" bytes:"+checkString.length()/8+" bits:"+checkString);
 		
 		//this is our "bitarray" of the packet
-		BitSet bitstring = BitSet.valueOf(payload);
-		
-		return bitstring;
+		return payload;
 	}
 
 	public String byteToString(byte[] b){
@@ -153,14 +152,14 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		Log.v("WORKER",params[2]+"=param - bps="+bps);
 		bitsPerSymbol=bps;
 		//convert message to data packet
-		BitSet packet = convertData(msg);
-		message=packet;
+		byte[] packet = convertData(msg);
+		
 		
 		//modulate
 		//modulate(bits, carrier signal, bitspersymbol)
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
 		//genTone();
-		sendData();
+		//sendData();
 		//playSound();
 		
 		return null;
@@ -212,12 +211,13 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		Log.v("WORKER","END of Mod");
 	}
 	public Integer[] calcAmp(BitSet bits, int sps, int bps){
+		//String bits=this.byteToString(bitArray);
 		Integer[] amp=new Integer[numSamples];
 		int A=0;
 		int counter=0;
 		int tc=0;
 		//Log.v("WORKER","bits.size="+bits.size());
-		for(int i=0;i<bits.size();i=i+bps){
+		for(int i=0;i<bits.length();i=i+bps){
 			String bitStr="";
 			for(int j=0;j<bps;j++){
 				bitStr=bitStr+""+(bits.get(i+j)?1:0);
