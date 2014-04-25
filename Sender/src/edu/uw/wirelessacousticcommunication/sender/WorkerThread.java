@@ -156,12 +156,8 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		BitSet packet = convertData(msg);
 		message=packet;
 		
-		//modulate
-		//modulate(bits, carrier signal, bitspersymbol)
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
-		//genTone();
 		sendData();
-		//playSound();
 		
 		return null;
 	}
@@ -179,7 +175,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	
 	public void genCarrierSamples(){
         // fill out the array
-		duration=(int)(Math.ceil(this.message.size()/this.bitsPerSymbol)/this.freqOfTone);
+		//duration=(int)(Math.ceil(this.message.size()/this.bitsPerSymbol)/this.freqOfTone);
 		numSamples=(int)(Math.ceil(this.message.size()/this.bitsPerSymbol) * Math.ceil(sampleRate/this.freqOfTone));
 		sample = new double[numSamples];
 		generatedSnd = new byte[2 * numSamples];

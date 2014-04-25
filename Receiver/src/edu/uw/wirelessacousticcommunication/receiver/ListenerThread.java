@@ -47,7 +47,7 @@ public class ListenerThread implements Runnable {
 		this.context = context;
 		bufferSizeBytes = 4096;//AudioRecord.getMinBufferSize(sampleRate,channelConfiguration,audioEncoding); //4096 on ion
 		bufferSizeBytes = AudioRecord.getMinBufferSize(44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT); //4096 on ion
-        buffer = new short[bufferSizeBytes]; 
+        buffer = new short[bufferSizeBytes/2]; 
         //audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,sampleRate,channelConfiguration,audioEncoding,bufferSizeBytes); //constructor
         audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT,bufferSizeBytes); //constructor
         Log.v("WORKER","INIT");
@@ -77,15 +77,17 @@ public class ListenerThread implements Runnable {
 			audioRecord.startRecording();
 			while(!Thread.interrupted()) {
 				try{
-					byte[] byteBuffer = new byte[bufferSizeBytes]; 
-					mSamplesRead = audioRecord.read(byteBuffer, 0, bufferSizeBytes);
+					//short[] byteBuffer = new short[bufferSizeBytes/2]; 
+					mSamplesRead = audioRecord.read(buffer, 0, bufferSizeBytes/2);
 					int amp;
-					for(int i = 0; i < bufferSizeBytes - 1; i++){
-						amp = (int)byteBuffer[i];
+					for(int i = 0; i < bufferSizeBytes/2; i++){
+						//amp = (int)buffer[i];
+						amp = buffer[i];//Math.round(buffer[i]/32767);
 						
 						//handler.handleMessage(handler.obtainMessage(amp));
 						//publishProgress( amp );
-						Log.v("WORKER","amp="+amp);
+						//if(amp>0)
+							Log.v("WORKER","amp="+amp);
 					}
 				} catch( Exception e ){
 					e.printStackTrace();
