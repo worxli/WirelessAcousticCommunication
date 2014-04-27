@@ -173,11 +173,36 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		//freq low
 		int lowfreq = 1575;
 		int highfreq = 3150;
-		double[] low = carrierWave(lowfreq);
-		double[] high = carrierWave(highfreq);
+		int spb = 4; //slots per bit -> # periods of slowest wave per bit 
+		double[] low = carrierWave(lowfreq,spb);
+		double[] high = carrierWave(highfreq,spb);
 		
 		double[] msg = new double[0];
+		for (int i = 0; i < message.length(); i++) {
+			if(message.charAt(i)=='1'){
+				//1 -> high freq
+				msg = concatenateArrays(msg, high);
+			} else {
+				//0 -> low freq
+				msg = concatenateArrays(msg, low);
+			}
+		}
 		
+		byte[] sound = new byte[msg.length*2];
+		int idx=0;
+		for (final double mval : msg) {
+            final short val = (short) ((short) mval*31000); //multiply with highest amplitude and creat short
+            // in 16 bit wave PCM, first byte is the low order byte
+            sound[idx++] = (byte) (val & 0x00ff);
+            sound[idx++] = (byte) ((val & 0xff00) >>> 8);
+        }
+		
+		final AudioTrack aT = new AudioTrack(AudioManager.STREAM_MUSIC,
+                sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
+                AudioFormat.ENCODING_PCM_16BIT, sound.length,
+                AudioTrack.MODE_STATIC);
+        aT.write(sound, 0, msg.length);
+        aT.play();
 		
 		
 	}
@@ -193,17 +218,15 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		return data;
 	}
 
-	private double[] carrierWave(int freq) {
+	private double[] carrierWave(int freq, int sbp) {
 		// TODO Auto-generated method stub
 		int AUDIO_SAMPLE_FREQ = 44100;
-	    double SAMPLING_TIME = 1.0/AUDIO_SAMPLE_FREQ;
 	    int samplesOne = 28; //slowest freq=1.575 kHz -> 14peak = 28 samples per 
 	    int samplesTwo = 64; //for 2 bps
 	    
-    	double[] wave = new double[samplesOne];
-    	for (int i = 0; i < samplesOne; ++i) {
+    	double[] wave = new double[samplesOne*sbp];
+    	for (int i = 0; i < samplesOne*sbp; ++i) {
             wave[i] = Math.sin(2 * Math.PI * i/(AUDIO_SAMPLE_FREQ/freq));
-            Log.d("carrier low", wave[i]+"");
         }
 	    
 	    return wave;
