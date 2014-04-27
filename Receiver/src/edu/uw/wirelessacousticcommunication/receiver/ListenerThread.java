@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.BitSet;
 
 import android.annotation.SuppressLint;
@@ -14,13 +15,14 @@ import android.content.ServiceConnection;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
+import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-public class ListenerThread implements Runnable {
+public class ListenerThread extends Thread {
 	
 	private Handler handler;
 	private boolean measure;
@@ -35,22 +37,41 @@ public class ListenerThread implements Runnable {
     public int audioEncoding = AudioFormat.ENCODING_PCM_16BIT; 
     public static short[] buffer; //+-32767 
     public static final int sampleRate = 44100; //samp per sec 8000, 11025, 22050 44100 or 48000
+	private static final int NUMBER_SAMPLES_PEAK = 0;
     
     //predefined preamble
     byte[] preamble = new byte[]{(byte) 0xff,(byte) 0xff};
     byte[] searchBuffer = new byte[2*bufferSizeBytes];
+    
+    //FSK stuff
+    private static double PEAK_AMPLITUDE_TRESHOLD = 60;
+    private String TAG = "561 project";
+    int AUDIO_SAMPLE_FREQ = 44100;
+    double SAMPLING_TIME = 1.0/AUDIO_SAMPLE_FREQ;
+	int AUDIO_BUFFER_SIZE = 22050;
+	int BIT_HIGH_SYMBOL=2;
+	int BIT_LOW_SYMBOL=1;
+	int BIT_NONE_SYMBOL=0;
+	int HIGH_BIT_N_PEAKS = 12;
+	int LOW_BIT_N_PEAKS = 7;
+	int SLOTS_PER_BIT = 4;
+	int MINUMUM_NPEAKS = 100;
+	int N_POINTS = 34;
 
 	public ListenerThread(Handler handler, Context context, boolean measure) {
 		
 		this.handler = handler;
 		this.measure = measure;
 		this.context = context;
+		
+		/*
 		bufferSizeBytes = 4096;//AudioRecord.getMinBufferSize(sampleRate,channelConfiguration,audioEncoding); //4096 on ion
 		bufferSizeBytes = AudioRecord.getMinBufferSize(44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT); //4096 on ion
         buffer = new short[bufferSizeBytes/2]; 
         //audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,sampleRate,channelConfiguration,audioEncoding,bufferSizeBytes); //constructor
         audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT,bufferSizeBytes); //constructor
         Log.v("WORKER","INIT");
+        */
 	}
 
 	@Override
@@ -72,7 +93,7 @@ public class ListenerThread implements Runnable {
 		//recorder.read(buffer, BufferElements2Rec);
 		
 		Log.d("Debug recorded: ", buffer+"");	
-		*/
+		
 		if(audioRecord.getState()==audioRecord.STATE_INITIALIZED){
 			audioRecord.startRecording();
 			while(!Thread.interrupted()) {
@@ -89,6 +110,9 @@ public class ListenerThread implements Runnable {
 						//if(amp>0)
 							Log.v("WORKER","amp="+amp);
 					}
+
+					//FSK
+					processFSK(buffer, mSamplesRead);
 					
 					handleData(new byte[1]);
 				} catch( Exception e ){
@@ -100,10 +124,226 @@ public class ListenerThread implements Runnable {
 		else{
 			Log.e("WORKER", "Audio Recorder not init");
 		}
-		
-
+		*/
+		FSKrecording();
 
 	}
+	
+	
+	
+	private void FSKrecording(){
+		
+		int minBufferSize = AudioTrack.getMinBufferSize(AUDIO_SAMPLE_FREQ, 2, AudioFormat.ENCODING_PCM_16BIT);
+		if (AUDIO_BUFFER_SIZE < minBufferSize) AUDIO_BUFFER_SIZE = minBufferSize;
+
+		Log.i(TAG, "buffer size:" + AUDIO_BUFFER_SIZE);
+		byte[] audioData = new byte[AUDIO_BUFFER_SIZE];
+
+		AudioRecord aR = new AudioRecord(MediaRecorder.AudioSource.MIC,
+				AUDIO_SAMPLE_FREQ, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+				AUDIO_BUFFER_SIZE);
+		
+		if(aR.getState()==aR.STATE_INITIALIZED){
+
+			// audio recording
+			aR.startRecording();
+			int nBytes = 0;
+			int index = 0;
+			
+			// continuous loop
+			while (true) {
+				nBytes = aR.read(audioData, index, AUDIO_BUFFER_SIZE);
+				Log.d(TAG, "audio acq: length=" + nBytes);
+				Log.d(TAG, "audio acq data: "+audioData[0]);
+				// Log.v(TAG, "nBytes=" + nBytes);
+				
+				processFSK(audioData,nBytes);
+				if (nBytes < 0) {
+					Log.e(TAG, "audioRecordingRun() read error=" + nBytes);
+				}
+				
+				if(Thread.interrupted()){
+					break;
+				}
+			}
+			
+			aR.stop();
+			aR.release();
+		
+		} else {
+			Log.i(TAG, "not initialized");
+		}
+	}
+
+
+	private void processFSK(byte[] audioData, int nBytes){
+		
+		if (signalDetected(audioData)){
+			
+			//count peaks 
+			int[] nPeaks = processSound(byte2double(audioData));
+			for (int i = 0; i < nPeaks.length; i++) {
+				Log.d("peaks per double", nPeaks[i]+"");
+			}
+			
+			//demodulate
+			int[] bits = parseBits(nPeaks);
+			
+			for (int i = 0; i < bits.length; i++) {
+				Log.d("bits", bits[i]+"");
+			}
+		}
+	}
+	
+	private int[] parseBits(int[] peaks){
+		// from the number of peaks array decode into an array of bits (2=bit-1, 1=bit-0, 0=no bit)
+		// 
+		int i =0;
+		int lowCounter = 0;
+		int highCounter = 0;
+		int nBits = peaks.length /SLOTS_PER_BIT;
+		int[] bits = new int[nBits];
+		//i = findNextZero(peaks,i); // do not search for silence
+		i = findNextNonZero(peaks,i);
+		int nonZeroIndex = i;
+		if (i+ SLOTS_PER_BIT >= peaks.length) //non-zero not found
+			return bits;
+		do {
+			//int nPeaks = peaks[i]+peaks[i+1]+peaks[i+2]+peaks[i+3];
+			int nPeaks = 0;
+			for (int j = 0; j < SLOTS_PER_BIT; j++) {
+				nPeaks+= peaks[i+j];
+			}
+			int position = i/SLOTS_PER_BIT;
+			bits[position] = BIT_NONE_SYMBOL;
+			
+			if (nPeaks>= LOW_BIT_N_PEAKS) {
+				//Log.w(TAG, "parseBits NPEAK=" + nPeaks);
+				bits[position] = BIT_LOW_SYMBOL;
+				lowCounter++;
+			}
+			if (nPeaks>=HIGH_BIT_N_PEAKS ) {
+				bits[position] = BIT_HIGH_SYMBOL;
+				highCounter++;
+			}
+
+			i=i+SLOTS_PER_BIT;
+			
+			
+		} while (SLOTS_PER_BIT+i<peaks.length);
+		lowCounter = lowCounter - highCounter;
+		return bits;
+	}
+	
+	private int findNextNonZero(int[] peaks, int startIndex){
+		// returns the position of the next value != 0 starting form startIndex
+		int index = startIndex;
+		int value = 1;
+		do {
+			value = peaks[index];
+			index++;
+		} while (value==0 && index<peaks.length-1);
+		return index-1;
+	}
+
+	private int[] processSound(double[] sound){
+		// split the sound array into slots of N_POINTS and calculate the number of peaks
+		
+		int nPoints = N_POINTS;
+		int nParts = sound.length / nPoints;
+		int[] nPeaks = new int[nParts]; 
+		int startIndex = 0;
+		int i = 0;
+		int peakCounter = 0;
+		do {
+			int endIndex = startIndex + nPoints;
+			int n = this.countPeaks(sound, startIndex, endIndex);
+			nPeaks[i] = n;
+			peakCounter += n;
+			i++;
+			startIndex = endIndex;
+		} while (i<nParts);
+
+		if (peakCounter < MINUMUM_NPEAKS) {
+			nPeaks = new int[0];
+		}
+		return nPeaks;
+	}
+
+	private boolean signalDetected(byte[] sound){
+		
+		boolean signalDetected = false;
+		
+		if ( sound!= null) {
+			double data[] = byte2double(sound);
+			signalDetected = signalAvailable(data);
+			if (signalDetected) Log.w(TAG, "signalDetected() TRUE"); 
+		}
+			
+		Log.i(TAG, "signalDetected()=" + signalDetected);
+		return signalDetected;
+	}
+	
+	public boolean signalAvailable(double[] sound){
+		
+		int nPoints = N_POINTS;
+		int nParts = sound.length / nPoints;
+		int nPeaks = 0;  
+		int startIndex = 0;
+		int i = 0;
+		do {
+			int endIndex = startIndex + nPoints;
+			int n = countPeaks(sound, startIndex, endIndex);
+			nPeaks += n;
+			i++;
+			startIndex = endIndex;
+			if (nPeaks > MINUMUM_NPEAKS) return true;
+		} while (i<nParts);
+		if (nPeaks >3)
+			Log.i(TAG,"signalAvailable() nPeaks=" + nPeaks);
+		return false;
+	}
+	
+	private double[] byte2double(byte[] data){
+		double d[] = new double[data.length/2];
+		ByteBuffer buf = ByteBuffer.wrap(data, 0, data.length);
+		buf.order(ByteOrder.LITTLE_ENDIAN);
+		int counter = 0;
+		while (buf.remaining() >= 2) {
+			double s = buf.getShort();
+			d[counter] = s;
+			counter++;
+		}
+		return d;
+	}
+
+	private int countPeaks(double[] sound, int startIndex, int endIndex){
+		// count the number of peaks in the selected interval
+		// peak identification criteria: sign changed and several significant samples (>PEAK_AMPLITUDE_TRESHOLD) 
+		
+		int index = startIndex;
+		int signChangeCounter = 0;
+		int numberSamplesGreaterThresdhold = 0;
+		int sign = 0; // initialized at the first significant value
+		do {
+			double value = sound[index];
+			if (Math.abs(value)>PEAK_AMPLITUDE_TRESHOLD) 
+				numberSamplesGreaterThresdhold++; //significant value
+			// sign initialization: take the sign of the first significant value
+			if (sign==0 & numberSamplesGreaterThresdhold>0) sign = (int) (value / Math.abs(value));
+			boolean signChanged = false;
+			if (sign <0 & value >0)	signChanged = true;
+			if (sign >0 & value <0)	signChanged = true;
+			
+			if (signChanged & numberSamplesGreaterThresdhold>NUMBER_SAMPLES_PEAK){
+				signChangeCounter++; // count peak
+				sign=-1*sign; //change sign
+			}
+			index++;
+		} while (index<endIndex);
+		return signChangeCounter;
+	}
+
 	private void handleData(byte[] buffer){
 		
 		int error = bitErrors("");

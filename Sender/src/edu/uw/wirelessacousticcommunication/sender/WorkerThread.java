@@ -155,15 +155,57 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		Log.v("WORKER",params[2]+"=param - bps="+bps);
 		bitsPerSymbol=bps;
 		//convert message to data packet
-		byte[] packet = convertData(msg);
+		//byte[] packet = convertData(msg);
 		
 		
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
-		sendData();
+		//sendData();
+		sendDataFSK(new byte[]{(byte) 0xff});
 
 		return null;
 	}
 	
+	private void sendDataFSK(byte[] packet) {
+		
+		//freq low
+		int lowfreq = 1575;
+		int highfreq = 3150;
+		double[] low = carrierWave(lowfreq);
+		double[] high = carrierWave(highfreq);
+		
+		double[] msg = new double[0];
+		
+		
+		
+	}
+	
+	private double[] concatenateArrays(double[] a1, double[] a2){
+		double[] data = new double[a1.length+a2.length];
+		for (int i = 0; i < a1.length; i++) {
+			data[i] = a1[i];
+		}
+		for (int i = 0; i < a2.length; i++) {
+			data[i + a1.length] = a2[i];
+		}
+		return data;
+	}
+
+	private double[] carrierWave(int freq) {
+		// TODO Auto-generated method stub
+		int AUDIO_SAMPLE_FREQ = 44100;
+	    double SAMPLING_TIME = 1.0/AUDIO_SAMPLE_FREQ;
+	    int samplesOne = 28; //slowest freq=1.575 kHz -> 14peak = 28 samples per 
+	    int samplesTwo = 64; //for 2 bps
+	    
+    	double[] wave = new double[samplesOne];
+    	for (int i = 0; i < samplesOne; ++i) {
+            wave[i] = Math.sin(2 * Math.PI * i/(AUDIO_SAMPLE_FREQ/freq));
+            Log.d("carrier low", wave[i]+"");
+        }
+	    
+	    return wave;
+	}
+
 	public void sendData(){
 		Log.v("WORKER","STEP 1");
 		genCarrierSamples();

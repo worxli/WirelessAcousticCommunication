@@ -15,7 +15,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 	
 	//listener thread
-	private Thread listenerThread;
+	private ListenerThread listenerThread;
 	private boolean mListening = false;
 	private boolean mMeasuring = false;
 	
@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		listenerThread = new ListenerThread(handler,this.getApplicationContext(),false);
 	}
 
 	@Override
@@ -72,9 +73,9 @@ public class MainActivity extends Activity {
 				mListening = true;
 				
 				//check if thread exists
-				if(listenerThread==null){
-					listenerThread = new Thread(new ListenerThread(handler,this.getApplicationContext(),false));
+				if(!listenerThread.isAlive()){
 					listenerThread.start();
+					
 				}
 				
 				Toast.makeText(getApplicationContext(), "started listening", Toast.LENGTH_SHORT).show();
@@ -98,8 +99,7 @@ public class MainActivity extends Activity {
 				mMeasuring = true;
 				
 				//check if thread exists
-				if(listenerThread==null){
-					listenerThread = new Thread(new ListenerThread(handler,this.getApplicationContext(),true));
+				if(!listenerThread.isAlive()){
 					listenerThread.start();
 				}
 				
