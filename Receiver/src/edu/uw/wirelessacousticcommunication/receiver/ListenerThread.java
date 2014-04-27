@@ -1,10 +1,13 @@
 package edu.uw.wirelessacousticcommunication.receiver;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.BitSet;
 
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
@@ -16,6 +19,7 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -46,10 +50,10 @@ public class ListenerThread implements Runnable {
 		this.measure = measure;
 		this.context = context;
 		bufferSizeBytes = 4096;//AudioRecord.getMinBufferSize(sampleRate,channelConfiguration,audioEncoding); //4096 on ion
-		bufferSizeBytes = AudioRecord.getMinBufferSize(44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT); //4096 on ion
+		bufferSizeBytes = AudioRecord.getMinBufferSize(44100,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT); //4096 on ion
         buffer = new short[bufferSizeBytes/2]; 
         //audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,sampleRate,channelConfiguration,audioEncoding,bufferSizeBytes); //constructor
-        audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,44100,AudioFormat.CHANNEL_CONFIGURATION_MONO,AudioFormat.ENCODING_PCM_16BIT,bufferSizeBytes); //constructor
+        audioRecord = new AudioRecord(android.media.MediaRecorder.AudioSource.MIC,44100,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,bufferSizeBytes); //constructor
         Log.v("WORKER","INIT");
 	}
 
@@ -75,27 +79,33 @@ public class ListenerThread implements Runnable {
 		*/
 		if(audioRecord.getState()==audioRecord.STATE_INITIALIZED){
 			audioRecord.startRecording();
-			while(!Thread.interrupted()) {
-				try{
-					//short[] byteBuffer = new short[bufferSizeBytes/2]; 
+			File root = Environment.getExternalStorageDirectory();
+			File file = new File(root, "MIC_fahad.txt");
+			FileWriter filewriter=null;
+			BufferedWriter out=null;
+			try{
+				if (root.canWrite()) {
+		            filewriter = new FileWriter(file);
+		            out = new BufferedWriter(filewriter);
+		        }
+				while(!Thread.interrupted()) {
 					mSamplesRead = audioRecord.read(buffer, 0, bufferSizeBytes/2);
 					int amp;
 					for(int i = 0; i < bufferSizeBytes/2; i++){
-						//amp = (int)buffer[i];
 						amp = buffer[i];//Math.round(buffer[i]/32767);
-						
-						//handler.handleMessage(handler.obtainMessage(amp));
-						//publishProgress( amp );
-						//if(amp>0)
+						if(out!=null)
+							out.write(amp+"\n");
+						if(amp>0)
 							Log.v("WORKER","amp="+amp);
 					}
-					
-					handleData(new byte[1]);
-				} catch( Exception e ){
-					e.printStackTrace();
+					//handleData(getDataBits(buffer));
 				}
-	        }
-			audioRecord.stop();
+				if(out!=null)
+					out.close();
+				audioRecord.stop();
+	        }catch( Exception e ){
+				e.printStackTrace();
+			}
 		}
 		else{
 			Log.e("WORKER", "Audio Recorder not init");
@@ -103,6 +113,56 @@ public class ListenerThread implements Runnable {
 		
 
 
+	}
+	//ASK Method
+	private byte[] getDataBits(short[] buffer){
+		int startSignal=findSignalStart(buffer);
+		if(startSignal==-1) return new byte[0];
+		int bps=1;
+		int samplesPerSymbol = 8;
+		int minThreshold = 10000;
+		int highSamples = (int)Math.floor(samplesPerSymbol/4);
+		byte[] bitData=new byte[(int)Math.ceil((((buffer.length-startSignal)/samplesPerSymbol)*bps)/8)];
+		String bitRep="";
+		int count=0;
+		for(int i=startSignal;i<buffer.length;i=i+samplesPerSymbol){
+			for(int j=i;j<samplesPerSymbol;j++) 
+				if(Math.abs(buffer[j])>minThreshold)
+					count++;
+			if(count>=highSamples)
+				bitRep=bitRep+"1";
+			else
+				bitRep=bitRep+"0";
+		}
+		return bitData;
+	}
+	//ASK Method
+	private int findSignalStart(short[] buffer){
+		int bps=1;
+		int samplesPerSymbol = 8;
+		int minThreshold = 10000;
+		int highSamples = (int)Math.floor(samplesPerSymbol/4);
+		int count=0;
+		int signalStart=0;
+		int lastHighIndex=-1;
+		boolean negSignal=false;
+		for(int i=0;i<buffer.length;i++){
+			if(Math.abs(buffer[i])>minThreshold){
+				count++;
+				lastHighIndex=i;
+			}
+			if(lastHighIndex<i-2)
+				count=0;
+			if(count>=highSamples)
+				return signalStart;
+			if(buffer[i]>=0 && negSignal){
+				signalStart=i;
+				negSignal=false;
+			}else if(buffer[i]<0 && !negSignal){
+				negSignal=true;
+			}
+		}
+		return -1;
 	}
 	private void handleData(byte[] buffer){
 		
