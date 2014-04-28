@@ -1,5 +1,8 @@
 package edu.uw.wirelessacousticcommunication.sender;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.zip.CRC32;
@@ -10,6 +13,7 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.AsyncTask;
+import android.os.Environment;
 import android.util.Log;
 
 public class WorkerThread extends AsyncTask<String, Void, Void> {
@@ -169,14 +173,14 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	}
 	
 	private void sendDataFSK(String message) {
-		
+
 		//freq low
-		int lowfreq = 1575;
-		int highfreq = 3150;
-		int spb = 4; //slots per bit -> # periods of slowest wave per bit 
+		int lowfreq = 3150;//1575;
+		int highfreq = 6300;
+		int spb = 100; //slots per bit -> # periods of slowest wave per bit 
 		double[] low = carrierWave(lowfreq,spb);
 		double[] high = carrierWave(highfreq,spb);
-		
+
 		double[] msg = new double[0];
 		for (int i = 0; i < message.length(); i++) {
 			if(message.charAt(i)=='1'){
@@ -187,24 +191,34 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 				msg = concatenateArrays(msg, low);
 			}
 		}
-		
-		byte[] sound = new byte[msg.length*2];
+
+		for (int i = 0; i < msg.length; i++) {
+			//Log.d("samples", msg[i]+"");
+		}
+
+		short[] sound = new short[msg.length];
 		int idx=0;
 		for (final double mval : msg) {
-            final short val = (short) ((short) mval*31000); //multiply with highest amplitude and creat short
+            //final short val = (short) ((short) mval*31000); //multiply with highest amplitude and creat short
             // in 16 bit wave PCM, first byte is the low order byte
-            sound[idx++] = (byte) (val & 0x00ff);
-            sound[idx++] = (byte) ((val & 0xff00) >>> 8);
+            //sound[idx++] = (byte) (val & 0x00ff);
+            //sound[idx++] = (byte) ((val & 0xff00) >>> 8);
+			//Log.d("samples", "double:"+mval+" int: "+(int)(mval*31000)+" short: "+(short) ((short)(int)(mval*31000)));
+			sound[idx++] = (short) (mval*31000);
         }
-		
+
+		for (int i = 0; i < sound.length; i++) {
+			//Log.d("samples", sound[i]+"");
+		}
+
 		final AudioTrack aT = new AudioTrack(AudioManager.STREAM_MUSIC,
                 sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, sound.length,
                 AudioTrack.MODE_STATIC);
-        aT.write(sound, 0, msg.length);
+        aT.write(sound, 0, sound.length);
         aT.play();
-		
-		
+
+
 	}
 	
 	private double[] concatenateArrays(double[] a1, double[] a2){
@@ -221,12 +235,30 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	private double[] carrierWave(int freq, int sbp) {
 		// TODO Auto-generated method stub
 		int AUDIO_SAMPLE_FREQ = 44100;
+	    int samplesOne = 28*sbp; //slowest freq=1.575 kHz -> 14peak = 28 samples per 
+
+    	double[] wave = new double[samplesOne];
+    	for (int i = 0; i < samplesOne; ++i) {
+            wave[i] = Math.sin(2 * Math.PI * i/(AUDIO_SAMPLE_FREQ/freq));
+        }
+
+	    return wave;
+	}
+	
+	private double[] carrierWaveTemp(int freq, int spb) {
+		// TODO Auto-generated method stub
+		int AUDIO_SAMPLE_FREQ = 44100;
 	    int samplesOne = 28; //slowest freq=1.575 kHz -> 14peak = 28 samples per 
 	    int samplesTwo = 64; //for 2 bps
+	    double samplingTime=1.0/AUDIO_SAMPLE_FREQ;
+	    double duration=68*samplingTime;
+	    int numSamples=(int)(duration*AUDIO_SAMPLE_FREQ);
 	    
-    	double[] wave = new double[samplesOne*sbp];
-    	for (int i = 0; i < samplesOne*sbp; ++i) {
-            wave[i] = Math.sin(2 * Math.PI * i/(AUDIO_SAMPLE_FREQ/freq));
+    	double[] wave;// = new double[samplesOne*spb];
+    	wave = new double[numSamples];
+    	for (int i = 0; i < numSamples; ++i) {
+            wave[i] = Math.sin(2 * Math.PI * i * freq * samplingTime);
+            //Log.v("GEN",""+wave[i]);
         }
 	    
 	    return wave;
