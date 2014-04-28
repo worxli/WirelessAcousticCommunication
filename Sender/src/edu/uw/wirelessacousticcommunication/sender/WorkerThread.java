@@ -183,7 +183,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		int idx=0;
 		for (final double mval : msg) {
 			sound[idx++] = (short) (mval*31000); //apply highest amplitude
-        }	
+        }
 		
 		final AudioTrack aT = new AudioTrack(AudioManager.STREAM_MUSIC,
                 sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
