@@ -49,7 +49,7 @@ public class ListenerThread extends Thread {
     byte[] searchBuffer = new byte[2*bufferSizeBytes];
     
     //FSK stuff
-    private static double PEAK_AMPLITUDE_TRESHOLD = 18000;
+    private static double PEAK_AMPLITUDE_TRESHOLD = 12000;
     private String TAG = "561 project";
     int AUDIO_SAMPLE_FREQ = 44100;
     double SAMPLING_TIME = 1.0/AUDIO_SAMPLE_FREQ;
@@ -194,12 +194,39 @@ public class ListenerThread extends Thread {
 	}
 
 
+	private int alignSignal(double[] data,int[] peaks){
+		int alignedIndex=0;
+		int maxPeakCount = 0;
+		int maxPeakIndex = 0;
+		int i = findNextNonZero(peaks,0);
+		if(i>0) i=i-1;
+		i = i*N_POINTS;
+		int end = i+(N_POINTS*6);
+		if(end>data.length) end = data.length;
+		int startIndex = i;
+		while(startIndex<end){
+			int endIndex = startIndex + (N_POINTS*4);
+			int n = countPeaks(data, startIndex, endIndex);
+			if(n>maxPeakCount){
+				maxPeakCount = n;
+				maxPeakIndex = startIndex;
+			}
+			startIndex++;
+		}
+		if(maxPeakCount>=32)
+			alignedIndex=maxPeakIndex;
+		return alignedIndex;
+	}
+	
 	private void processFSK(byte[] audioData, int nBytes){
 		
 		if (signalDetected(audioData)){
-			
+			double[] audioSamples = byte2double(audioData);
 			//count peaks 
-			int[] nPeaks = processSound(byte2double(audioData));
+			int[] nPeaks = processSound(audioSamples,0);
+			int sIndex = alignSignal(audioSamples,nPeaks);
+			nPeaks = processSound(audioSamples,sIndex);
+			
 			for (int i = 0; i < nPeaks.length; i++) {
 				Log.d("peaks per double", nPeaks[i]+"");
 			}
@@ -264,13 +291,13 @@ public class ListenerThread extends Thread {
 		return index-1;
 	}
 
-	private int[] processSound(double[] sound){
+	private int[] processSound(double[] sound,int sIndex){
 		
 		// split the sound array into slots of N_POINTS and calculate the number of peaks
 		int nPoints = N_POINTS;
-		int nParts = sound.length / nPoints;
+		int nParts = (sound.length-sIndex) / nPoints;
 		int[] nPeaks = new int[nParts]; 
-		int startIndex = 0;
+		int startIndex = sIndex;
 		int i = 0;
 		int peakCounter = 0;
 		do {
