@@ -167,7 +167,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
 		//sendData();
-		sendDataFSK("101010101010");
+		sendDataFSK("111100001");
 
 		return null;
 	}
@@ -177,7 +177,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		//freq low
 		int lowfreq = 3150;//1575;
 		int highfreq = 6300;
-		int spb = 100; //slots per bit -> # periods of slowest wave per bit 
+		int spb = 4; //slots per bit -> # periods of slowest wave per bit 
 		double[] low = carrierWave(lowfreq,spb);
 		double[] high = carrierWave(highfreq,spb);
 

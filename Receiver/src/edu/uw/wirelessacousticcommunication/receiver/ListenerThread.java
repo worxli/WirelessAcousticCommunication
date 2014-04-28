@@ -49,7 +49,7 @@ public class ListenerThread extends Thread {
     byte[] searchBuffer = new byte[2*bufferSizeBytes];
     
     //FSK stuff
-    private static double PEAK_AMPLITUDE_TRESHOLD = 60;
+    private static double PEAK_AMPLITUDE_TRESHOLD = 10000;
     private String TAG = "561 project";
     int AUDIO_SAMPLE_FREQ = 44100;
     double SAMPLING_TIME = 1.0/AUDIO_SAMPLE_FREQ;
@@ -60,7 +60,7 @@ public class ListenerThread extends Thread {
 	int HIGH_BIT_N_PEAKS = 12;
 	int LOW_BIT_N_PEAKS = 7;
 	int SLOTS_PER_BIT = 4;
-	int MINUMUM_NPEAKS = 100;
+	int MINUMUM_NPEAKS = 50;
 	int N_POINTS = 34;
 
 	public ListenerThread(Handler handler, Context context, boolean measure) {
