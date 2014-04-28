@@ -163,7 +163,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
 		//sendData();
-		sendDataFSK(message);
+		sendDataFSK("101010101010");
 
 		return null;
 	}
@@ -171,9 +171,9 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	private void sendDataFSK(String message) {
 		
 		//freq low
-		int lowfreq = 1575;
-		int highfreq = 3150;
-		int spb = 4; //slots per bit -> # periods of slowest wave per bit 
+		int lowfreq = 3150;//1575;
+		int highfreq = 6300;
+		int spb = 100; //slots per bit -> # periods of slowest wave per bit 
 		double[] low = carrierWave(lowfreq,spb);
 		double[] high = carrierWave(highfreq,spb);
 		
@@ -188,20 +188,30 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 			}
 		}
 		
-		byte[] sound = new byte[msg.length*2];
+		for (int i = 0; i < msg.length; i++) {
+			//Log.d("samples", msg[i]+"");
+		}
+		
+		short[] sound = new short[msg.length];
 		int idx=0;
 		for (final double mval : msg) {
-            final short val = (short) ((short) mval*31000); //multiply with highest amplitude and creat short
+            //final short val = (short) ((short) mval*31000); //multiply with highest amplitude and creat short
             // in 16 bit wave PCM, first byte is the low order byte
-            sound[idx++] = (byte) (val & 0x00ff);
-            sound[idx++] = (byte) ((val & 0xff00) >>> 8);
+            //sound[idx++] = (byte) (val & 0x00ff);
+            //sound[idx++] = (byte) ((val & 0xff00) >>> 8);
+			//Log.d("samples", "double:"+mval+" int: "+(int)(mval*31000)+" short: "+(short) ((short)(int)(mval*31000)));
+			sound[idx++] = (short) (mval*31000);
         }
+		
+		for (int i = 0; i < sound.length; i++) {
+			//Log.d("samples", sound[i]+"");
+		}
 		
 		final AudioTrack aT = new AudioTrack(AudioManager.STREAM_MUSIC,
                 sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, sound.length,
                 AudioTrack.MODE_STATIC);
-        aT.write(sound, 0, msg.length);
+        aT.write(sound, 0, sound.length);
         aT.play();
 		
 		
@@ -221,11 +231,10 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	private double[] carrierWave(int freq, int sbp) {
 		// TODO Auto-generated method stub
 		int AUDIO_SAMPLE_FREQ = 44100;
-	    int samplesOne = 28; //slowest freq=1.575 kHz -> 14peak = 28 samples per 
-	    int samplesTwo = 64; //for 2 bps
+	    int samplesOne = 28*sbp; //slowest freq=1.575 kHz -> 14peak = 28 samples per 
 	    
-    	double[] wave = new double[samplesOne*sbp];
-    	for (int i = 0; i < samplesOne*sbp; ++i) {
+    	double[] wave = new double[samplesOne];
+    	for (int i = 0; i < samplesOne; ++i) {
             wave[i] = Math.sin(2 * Math.PI * i/(AUDIO_SAMPLE_FREQ/freq));
         }
 	    
