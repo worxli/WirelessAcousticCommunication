@@ -61,7 +61,7 @@ public class ListenerThread extends Thread {
 	int LOW_BIT_N_PEAKS = 7;
 	int SLOTS_PER_BIT = 4;
 	int MINUMUM_NPEAKS = 50;
-	int N_POINTS = 34;
+	int N_POINTS = 28;
 
 	public ListenerThread(Handler handler, Context context, boolean measure) {
 		
@@ -265,8 +265,8 @@ public class ListenerThread extends Thread {
 	}
 
 	private int[] processSound(double[] sound){
-		// split the sound array into slots of N_POINTS and calculate the number of peaks
 		
+		// split the sound array into slots of N_POINTS and calculate the number of peaks
 		int nPoints = N_POINTS;
 		int nParts = sound.length / nPoints;
 		int[] nPeaks = new int[nParts]; 
@@ -275,7 +275,7 @@ public class ListenerThread extends Thread {
 		int peakCounter = 0;
 		do {
 			int endIndex = startIndex + nPoints;
-			int n = this.countPeaks(sound, startIndex, endIndex);
+			int n = countPeaks(sound, startIndex, endIndex);
 			nPeaks[i] = n;
 			peakCounter += n;
 			i++;
