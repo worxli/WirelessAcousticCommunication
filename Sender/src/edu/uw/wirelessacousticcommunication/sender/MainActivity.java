@@ -22,46 +22,6 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		SeekBar sb = (SeekBar)findViewById(R.id.freqSlider);
-	    sb.setMax(21);
-	    sb.setProgress(0);
-	    sb.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
-
-	        @Override
-	        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-	        	
-	            TextView text = (TextView)findViewById(R.id.freqText);
-	            text.setText(1+progress+" kHz");
-	        }
-
-	        @Override
-	        public void onStartTrackingTouch(SeekBar seekBar) {}
-
-	        @Override
-	        public void onStopTrackingTouch(SeekBar seekBar) {}
-
-	    });
-	    
-	    SeekBar sb2 = (SeekBar)findViewById(R.id.symbolSlider);
-	    sb2.setProgress(0); 
-	    sb2.setMax(4);
-	    sb2.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
-
-	        @Override
-	        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-	        	
-	            TextView text = (TextView)findViewById(R.id.symbolText);
-	            text.setText((int)Math.pow(2, 1+progress)+" bits per symbol");
-	            
-	        }
-
-	        @Override
-	        public void onStartTrackingTouch(SeekBar seekBar) {}
-
-	        @Override
-	        public void onStopTrackingTouch(SeekBar seekBar) {}
-
-	    });
 	}
 	
 	
@@ -78,14 +38,8 @@ public class MainActivity extends Activity {
 		String msg = et.getText().toString();
 		et.setText("");
 		
-		SeekBar sb = (SeekBar)findViewById(R.id.freqSlider);
-		int frequency = (sb.getProgress()+1)*1000;
-		
-		SeekBar sb2 = (SeekBar)findViewById(R.id.symbolSlider);
-		int bitspersymbol = (int)Math.pow(2,(sb2.getProgress()+1));
-		
 		//send msg to worker thread via handler
-		new WorkerThread().execute(msg, frequency+"", ""+bitspersymbol);
+		new WorkerThread().execute(msg);
 		
 		Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
 		
@@ -94,12 +48,6 @@ public class MainActivity extends Activity {
 	public void sendFile(View v){
 		BufferedReader reader = null;
 		StringBuilder contents = new StringBuilder();
-		
-		SeekBar sb = (SeekBar)findViewById(R.id.freqSlider);
-		int frequency = (sb.getProgress()+1)*1000;
-		
-		SeekBar sb2 = (SeekBar)findViewById(R.id.symbolSlider);
-		int bitspersymbol = (int)Math.pow(2,(sb2.getProgress()+1));
 		
 		Log.d("reading", "start");
 		try {
@@ -124,8 +72,10 @@ public class MainActivity extends Activity {
 		    }
 		}
 		
+		Toast.makeText(getApplicationContext(), "reading file finished", Toast.LENGTH_SHORT).show();
+		
 		//send msg to worker thread via handler
-		new WorkerThread().execute(contents.toString(), frequency+"", ""+bitspersymbol);
+		new WorkerThread().execute(contents.toString());
 	}
 
 }
