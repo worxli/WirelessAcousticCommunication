@@ -167,7 +167,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		Log.v("WORKER","Working!!!!!!!!!!!!!!!");
 		//sendData();
-		sendDataFSK(message);
+		sendDataFSK("101010101010");
 
 		return null;
 	}
@@ -191,11 +191,10 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 				msg = concatenateArrays(msg, low);
 			}
 		}
-
 		for (int i = 0; i < msg.length; i++) {
 			//Log.d("samples", msg[i]+"");
 		}
-
+		
 		short[] sound = new short[msg.length];
 		int idx=0;
 		for (final double mval : msg) {
@@ -206,11 +205,10 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 			//Log.d("samples", "double:"+mval+" int: "+(int)(mval*31000)+" short: "+(short) ((short)(int)(mval*31000)));
 			sound[idx++] = (short) (mval*31000);
         }
-
 		for (int i = 0; i < sound.length; i++) {
 			//Log.d("samples", sound[i]+"");
 		}
-
+		
 		final AudioTrack aT = new AudioTrack(AudioManager.STREAM_MUSIC,
                 sampleRate, AudioFormat.CHANNEL_CONFIGURATION_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, sound.length,
@@ -236,7 +234,6 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		// TODO Auto-generated method stub
 		int AUDIO_SAMPLE_FREQ = 44100;
 	    int samplesOne = 28*sbp; //slowest freq=1.575 kHz -> 14peak = 28 samples per 
-
     	double[] wave = new double[samplesOne];
     	for (int i = 0; i < samplesOne; ++i) {
             wave[i] = Math.sin(2 * Math.PI * i/(AUDIO_SAMPLE_FREQ/freq));
@@ -259,8 +256,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
     	for (int i = 0; i < numSamples; ++i) {
             wave[i] = Math.sin(2 * Math.PI * i * freq * samplingTime);
             //Log.v("GEN",""+wave[i]);
-        }
-	    
+    	}
 	    return wave;
 	}
 
