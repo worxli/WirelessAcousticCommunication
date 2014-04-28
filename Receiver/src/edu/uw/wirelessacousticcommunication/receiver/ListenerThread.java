@@ -42,14 +42,14 @@ public class ListenerThread extends Thread {
     public int audioEncoding = AudioFormat.ENCODING_PCM_16BIT; 
     public static short[] buffer; //+-32767 
     public static final int sampleRate = 44100; //samp per sec 8000, 11025, 22050 44100 or 48000
-	private static final int NUMBER_SAMPLES_PEAK = 0;
+	private static final int NUMBER_SAMPLES_PEAK = 2;
     
     //predefined preamble
     byte[] preamble = new byte[]{(byte) 0xff,(byte) 0xff};
     byte[] searchBuffer = new byte[2*bufferSizeBytes];
     
     //FSK stuff
-    private static double PEAK_AMPLITUDE_TRESHOLD = 10000;
+    private static double PEAK_AMPLITUDE_TRESHOLD = 18000;
     private String TAG = "561 project";
     int AUDIO_SAMPLE_FREQ = 44100;
     double SAMPLING_TIME = 1.0/AUDIO_SAMPLE_FREQ;
@@ -57,11 +57,11 @@ public class ListenerThread extends Thread {
 	int BIT_HIGH_SYMBOL=2;
 	int BIT_LOW_SYMBOL=1;
 	int BIT_NONE_SYMBOL=0;
-	int HIGH_BIT_N_PEAKS = 12;
-	int LOW_BIT_N_PEAKS = 7;
+	int HIGH_BIT_N_PEAKS = 30;
+	int LOW_BIT_N_PEAKS = 12;
 	int SLOTS_PER_BIT = 4;
 	int MINUMUM_NPEAKS = 50;
-	int N_POINTS = 34;
+	int N_POINTS = 28;
 
 	public ListenerThread(Handler handler, Context context, boolean measure) {
 		
