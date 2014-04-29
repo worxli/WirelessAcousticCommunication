@@ -140,7 +140,11 @@ public class Decoder extends Thread {
 			
 			String str = "";
 			for (int i = 0; i < bits.length; i++) {
-				str = str+(bits[i]-1==1?"1":"0");
+				if(bits[i]==2){
+					str = str+"1";
+				} else if(bits[i]==1){
+					str = str+"0";
+				}
 			}
 			
 			handleData(str);
@@ -436,7 +440,7 @@ public class Decoder extends Thread {
 		//get position of first occurence of preamble
 		pos = searchString.indexOf(preamb);
 		Log.i("Pos", pos+"");
-		//Log.i("bit string received so far: ", searchString);
+		Log.i("bit string received so far: ", searchString);
 		if(pos!=-1){
 			String packetString = searchString.substring(pos+preamb.length());
 			if(packetString.length()>=12*8){

@@ -25,8 +25,9 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 	@SuppressLint("NewApi")
 	private byte[] convertData(String msg, int start, int end) {
 		
-		msg = msg.substring(start, end);
 		
+		msg = msg.substring(start, end);
+		/*
 		//get IP, if not available -> 0.0.0.0
 		String srcIP = "1.1.1.1";//Utils.getIPAddress(true);
 		
@@ -87,6 +88,30 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 				packet[idx++] = (byte) (isBitSet(payload[i],j)?1:0);
 			}
 		}
+		*/
+		
+		//new just put preamble and 12 byte data
+		//get bytes of message
+		byte[] data = msg.getBytes();
+		int prelen = 1;
+		byte[] payload = new byte[prelen+1+data.length];
+		
+		payload[0] = (byte) 0xaf;
+		payload[1] = (byte) data.length;
+		
+		for (int i = 0; i < data.length; i++) {
+			payload[i+prelen+1] = data[i];
+			//Log.i("data:", (char)data[i]+"");
+		}
+		
+		byte[] packet = new byte[payload.length*8];
+		
+		int idx = 0;
+		for (int i = 0; i < payload.length; i++) {
+			for (int j = 7; j >= 0 ; j--) {
+				packet[idx++] = (byte) (isBitSet(payload[i],j)?1:0);
+			}
+		}
 		
 		//this is our "bitarray" of the packet
 		return packet;
@@ -117,9 +142,11 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		//get message
 		String msg = params[0];
 		
+		msg = "aaaa";
+		
 		int le = msg.length();
 		int start = 0;
-		int it = le;
+		int it = 4;
 		int end = (it>le)?le:it;
 		for (int i = 0; i < le; i=i+it) {
 			
@@ -193,6 +220,13 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
                 AudioTrack.MODE_STATIC);
         aT.write(sound, 0, sound.length);
         aT.play();
+        
+        try {
+			Thread.sleep(200);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 
 	}
