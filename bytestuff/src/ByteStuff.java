@@ -152,14 +152,17 @@ public class ByteStuff {
 		
 		findPreamble(bb, packet);*/
 		
-		String a = "s";
-		String d = byteToString(a.getBytes());
-		
-		System.out.println(a);
-		System.out.println(d);
-		
-		byte[] b = a.getBytes();
-		char c = (char) Byte.parseByte(d,2);
+		/*
+		 * byte[] packet = new byte[bits.length/8];
+		for (int i = 0; i < packet.length; i++) {
+			byte t = 0;
+			for (int j = 0; j < 8; j++) {
+				t = (byte) (t | (byte)(bits[7*i+j])<<j);	
+			}
+			
+			packet[i] = t;
+		}
+		 */
 		
 	}	
 	

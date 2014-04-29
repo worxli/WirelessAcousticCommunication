@@ -119,13 +119,14 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 		
 		int le = msg.length();
 		int start = 0;
-		int it = 250;
+		int it = le;
 		int end = (it>le)?le:it;
 		for (int i = 0; i < le; i=i+it) {
 			
 			//new byte[]{(byte)1, (byte)0}; //
 			byte[] packet = convertData(msg, start, end);
 			sendDataFSK(packet, 0, packet.length);
+			Log.i("message", packet.length+"");
 			start = start+it;
 			end = (end+it>le)?le:end+it;
 			
@@ -156,6 +157,7 @@ public class WorkerThread extends AsyncTask<String, Void, Void> {
 			}
 		}
 		*/
+		
 		int lowlen = low.length;
 		double[] msg = new double[message.length*lowlen];
 		for (int i = start; i < message.length; i++) {
